@@ -67,13 +67,10 @@ void IRQ_wiatr() {
   }
 }
 
-volatile uint8_t czas_s = 0, czas_ds = 0;
+volatile uint8_t sekunda = 0;
 
-void IRQ_co_100ms() {
-  czas_ds++;
-  if (czas_ds > 9) {
-    czas_s++;
-  }
+void IRQ_co_1s() {
+    sekunda++;
 }
 
 void deszcz_przelicz(){
@@ -113,21 +110,21 @@ void setup() {
   digitalWrite(PIN_predkosc_wiatru,LOW);
   attachInterrupt(INT_predkosc_wiatru, IRQ_wiatr, RISING);
   //zegarek
-  Timer1.initialize(100000);
-  Timer1.attachInterrupt(IRQ_co_100ms);
+  Timer1.initialize(1000000);
+  Timer1.attachInterrupt(IRQ_co_1s);
   
   interrupts();
 }
 
 void loop() {
-  if (czas_s == 47) {
+  if (sekunda == 47) {
     // resetujemy
     digitalWrite(PIN_reset_esp,HIGH);
     digitalWrite(PIN_reset_esp,LOW);
   }
-
-  if (czas_s >= 60) {
-    czas_s = 0;
+  
+  if (sekunda >= 60) {
+    sekunda = 0;
     przygotuj_pomiary();
     wyslij_pomiary();
   }
