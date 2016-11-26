@@ -30,6 +30,16 @@ ESP:
 4-reset esp
 
 */
+
+const float Turbina_korekta   = 0.00679;
+const float Solar_1_korekta   = 0.00679;
+const float Solar_2_korekta   = 0.00675;
+const float Akumulator_korekta= 0.00434;
+const float Uv_korekta        = 0.01;
+const float Pusty_akumulator  = 2.5;
+const float Pelny_akumulator  = 4.2;
+const uint8_t Ilosc_probek    = 32;
+
 #include <TimerOne.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -46,6 +56,11 @@ const byte PIN_dallas_4        = 11;
 const byte PIN_dallas_5        = 12;
 const byte PIN_dallas_6        = 13;
 const byte PIN_kierunek_wiatru = A0;
+const byte PIN_solar_1         = A1;
+const byte PIN_solar_2         = A2;
+const byte PIN_turbina         = A3;
+const byte PIN_uv              = A4;
+const byte PIN_akumulator      = A5;
 
 OneWire DS_1(PIN_dallas_1);
 OneWire DS_2(PIN_dallas_2);
@@ -78,7 +93,7 @@ void IRQ_deszcz() {
 }
 
 volatile unsigned long wiatr_czas, wiatr_czas_ostatni;
-volatile uint8_t wiatr_suma_impulsow = 0, wiatr_max_suma_impulsow = 0;
+volatile uint8_t wiatr_suma_impulsow = 0;
 
 void IRQ_wiatr() {
   wiatr_czas = millis();
@@ -87,7 +102,6 @@ void IRQ_wiatr() {
   if (wiatr_interwal > 10) { // pomijamy czas <= 10ms.
     wiatr_czas_ostatni = deszcz_czas;
     wiatr_suma_impulsow++;
-    wiatr_max_suma_impulsow++;
   }
 }
 
@@ -105,6 +119,8 @@ void deszcz_przelicz(){
 void wiatr_przelicz(){
   pomiary[1] = (float) wiatr_suma_impulsow * 2.4 / 60;
   wiatr_suma_impulsow = 0;
+  if (pomiary[ 1]>pomiary[19])
+      pomiary[19]=pomiary[ 1];
 }
 
 void dallas_pomiar(){
@@ -145,16 +161,21 @@ float kierunek_wiatru(uint16_t x){
 }
 uint16_t pomiar_adc(int pin){
   uint32_t pomiar = 0;
-  uint8_t ilosc_probek = 32;
-  for(uint8_t i=0;i<ilosc_probek;i++)
+  uint8_t ile = Ilosc_probek;
+  for(uint8_t i=0;i<ile;i++)
       pomiar+=analogRead(pin);
 
-  return pomiar/ilosc_probek;
+  return pomiar/ile;
 }
 
 void pomiary_analogowe(){
-  uint32_t pomiar = 0;
-  pomiary[2]=kierunek_wiatru(pomiar_adc(PIN_kierunek_wiatru));
+  pomiary[ 2]=kierunek_wiatru(pomiar_adc(PIN_kierunek_wiatru));
+  pomiary[ 3]=(float)pomiar_adc(PIN_uv)*Uv_korekta;
+  pomiary[14]=(float)pomiar_adc(PIN_solar_1)*Solar_1_korekta;
+  pomiary[15]=(float)pomiar_adc(PIN_solar_2)*Solar_2_korekta;
+  pomiary[16]=(float)pomiar_adc(PIN_turbina)*Turbina_korekta;
+  pomiary[17]=(float)pomiar_adc(PIN_akumulator)*Akumulator_korekta;
+  pomiary[18]=100*(pomiary[17]-Pusty_akumulator)/(Pelny_akumulator - Pusty_akumulator);
 }
 
 void przygotuj_pomiary(){
