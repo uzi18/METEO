@@ -45,6 +45,7 @@ const byte PIN_dallas_3        = 10;
 const byte PIN_dallas_4        = 11;
 const byte PIN_dallas_5        = 12;
 const byte PIN_dallas_6        = 13;
+const byte PIN_kierunek_wiatru = A0;
 
 OneWire DS_1(PIN_dallas_1);
 OneWire DS_2(PIN_dallas_2);
@@ -106,11 +107,6 @@ void wiatr_przelicz(){
   wiatr_suma_impulsow = 0;
 }
 
-void przygotuj_pomiary(){
-  deszcz_przelicz();
-  wiatr_przelicz();
-}
-
 void dallas_pomiar(){
   czujnik_DS_1.requestTemperatures();
   czujnik_DS_2.requestTemperatures();
@@ -127,6 +123,44 @@ void dallas_odczyt(){
   pomiary[11]= czujnik_DS_4.getTempCByIndex(0);
   pomiary[12]= czujnik_DS_5.getTempCByIndex(0);
   pomiary[13]= czujnik_DS_6.getTempCByIndex(0);
+}
+
+float kierunek_wiatru(uint16_t x){
+  if (x<=   8) return 112.5;
+  if (x<=  10) return 67.5;
+  if (x<=  13) return 90;
+  if (x<=  20) return 157.5;
+  if (x<=  32) return 135;
+  if (x<=  43) return 202.5;
+  if (x<=  65) return 180;
+  if (x<=  92) return 22.5;
+  if (x<= 136) return 45;
+  if (x<= 184) return 247.5;
+  if (x<= 228) return 225;
+  if (x<= 320) return 337.5;
+  if (x<= 422) return 0;
+  if (x<= 570) return 292.5;
+  if (x<= 852) return 315;
+  if (x<=1023) return 270;
+}
+uint16_t pomiar_adc(int pin){
+  uint32_t pomiar = 0;
+  uint8_t ilosc_probek = 32;
+  for(uint8_t i=0;i<ilosc_probek;i++)
+      pomiar+=analogRead(pin);
+
+  return pomiar/ilosc_probek;
+}
+
+void pomiary_analogowe(){
+  uint32_t pomiar = 0;
+  pomiary[2]=kierunek_wiatru(pomiar_adc(PIN_kierunek_wiatru));
+}
+
+void przygotuj_pomiary(){
+  deszcz_przelicz();
+  wiatr_przelicz();
+  pomiary_analogowe();
 }
 
 void wyslij_pomiary(){
@@ -155,7 +189,8 @@ void setup() {
   Timer1.attachInterrupt(IRQ_co_1s);
   
   interrupts();
-
+  
+  //DALLASY
   czujnik_DS_1.begin();
   czujnik_DS_2.begin();
   czujnik_DS_3.begin();
@@ -169,6 +204,8 @@ void setup() {
   czujnik_DS_4.setWaitForConversion(false);
   czujnik_DS_5.setWaitForConversion(false);
   czujnik_DS_6.setWaitForConversion(false);
+  
+  analogReference(INTERNAL);
 }
 
 void loop() {
