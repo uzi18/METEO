@@ -31,12 +31,35 @@ ESP:
 
 */
 #include <TimerOne.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 const byte INT_pomiar_deszczu  = 0;
 const byte INT_predkosc_wiatru = 1;
 const byte PIN_pomiar_deszczu  = 2;
 const byte PIN_predkosc_wiatru = 3;
 const byte PIN_reset_esp       = 4;
+const byte PIN_dallas_1        = 8;
+const byte PIN_dallas_2        = 9;
+const byte PIN_dallas_3        = 10;
+const byte PIN_dallas_4        = 11;
+const byte PIN_dallas_5        = 12;
+const byte PIN_dallas_6        = 13;
+
+OneWire DS_1(PIN_dallas_1);
+OneWire DS_2(PIN_dallas_2);
+OneWire DS_3(PIN_dallas_3);
+OneWire DS_4(PIN_dallas_4);
+OneWire DS_5(PIN_dallas_5);
+OneWire DS_6(PIN_dallas_6);
+
+DallasTemperature czujnik_DS_1(&DS_1);
+DallasTemperature czujnik_DS_2(&DS_2);
+DallasTemperature czujnik_DS_3(&DS_3);
+DallasTemperature czujnik_DS_4(&DS_4);
+DallasTemperature czujnik_DS_5(&DS_5);
+DallasTemperature czujnik_DS_6(&DS_6);
+
 
 float pomiary[20];
 
@@ -88,6 +111,24 @@ void przygotuj_pomiary(){
   wiatr_przelicz();
 }
 
+void dallas_pomiar(){
+  czujnik_DS_1.requestTemperatures();
+  czujnik_DS_2.requestTemperatures();
+  czujnik_DS_3.requestTemperatures();
+  czujnik_DS_4.requestTemperatures();
+  czujnik_DS_5.requestTemperatures();
+  czujnik_DS_6.requestTemperatures();
+}
+
+void dallas_odczyt(){
+  pomiary[8] = czujnik_DS_1.getTempCByIndex(0);
+  pomiary[9] = czujnik_DS_2.getTempCByIndex(0);
+  pomiary[10]= czujnik_DS_3.getTempCByIndex(0);
+  pomiary[11]= czujnik_DS_4.getTempCByIndex(0);
+  pomiary[12]= czujnik_DS_5.getTempCByIndex(0);
+  pomiary[13]= czujnik_DS_6.getTempCByIndex(0);
+}
+
 void wyslij_pomiary(){
   for(uint8_t i=0;i<sizeof(pomiary)/sizeof(float);i++) {
     if (i>0) Serial.write(' ');
@@ -114,6 +155,20 @@ void setup() {
   Timer1.attachInterrupt(IRQ_co_1s);
   
   interrupts();
+
+  czujnik_DS_1.begin();
+  czujnik_DS_2.begin();
+  czujnik_DS_3.begin();
+  czujnik_DS_4.begin();
+  czujnik_DS_5.begin();
+  czujnik_DS_6.begin();
+
+  czujnik_DS_1.setWaitForConversion(false);
+  czujnik_DS_2.setWaitForConversion(false);
+  czujnik_DS_3.setWaitForConversion(false);
+  czujnik_DS_4.setWaitForConversion(false);
+  czujnik_DS_5.setWaitForConversion(false);
+  czujnik_DS_6.setWaitForConversion(false);
 }
 
 void loop() {
@@ -121,6 +176,14 @@ void loop() {
     // resetujemy
     digitalWrite(PIN_reset_esp,HIGH);
     digitalWrite(PIN_reset_esp,LOW);
+  }
+  
+  if (sekunda == 48) {
+    dallas_pomiar();
+  }
+  
+  if (sekunda == 50) {
+    dallas_odczyt();
   }
   
   if (sekunda >= 60) {
