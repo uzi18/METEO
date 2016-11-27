@@ -21,8 +21,8 @@ OneWire:
 13-DS6-100cm
 
 SOFT I2C:
-13-SDA
-12-SCL
+6-SDA
+7-SCL
 BME280, BH1750 i MOD-1016(AS3935)
 
 ESP:
@@ -31,10 +31,11 @@ ESP:
 
 */
 
-const float Turbina_korekta   = 0.00679;
-const float Solar_1_korekta   = 0.00679;
-const float Solar_2_korekta   = 0.00675;
-const float Akumulator_korekta= 0.00434;
+const float U_REF             = 1.1;
+const float Turbina_korekta   = U_REF*(36.0+ 6.8)/ 6.8/1024;
+const float Solar_1_korekta   = U_REF*(36.0+ 6.8)/ 6.8/1024;
+const float Solar_2_korekta   = U_REF*(36.0+ 6.8)/ 6.8/1024;
+const float Akumulator_korekta= U_REF*(47.0+15.0)/15.0/1024;
 const float Uv_korekta        = 0.01;
 const float Pusty_akumulator  = 2.5;
 const float Pelny_akumulator  = 4.2;
@@ -49,6 +50,8 @@ const byte INT_predkosc_wiatru = 1;
 const byte PIN_pomiar_deszczu  = 2;
 const byte PIN_predkosc_wiatru = 3;
 const byte PIN_reset_esp       = 4;
+const byte PIN_SDA             = 6;
+const byte PIN_SCL             = 7;
 const byte PIN_dallas_1        = 8;
 const byte PIN_dallas_2        = 9;
 const byte PIN_dallas_3        = 10;
@@ -143,22 +146,23 @@ void dallas_odczyt(){
 
 float kierunek_wiatru(uint16_t x){
   if (x<=   8) return 112.5;
-  if (x<=  10) return 67.5;
-  if (x<=  13) return 90;
+  if (x<=  10) return  67.5;
+  if (x<=  13) return  90.0;
   if (x<=  20) return 157.5;
-  if (x<=  32) return 135;
+  if (x<=  32) return 135.0;
   if (x<=  43) return 202.5;
-  if (x<=  65) return 180;
-  if (x<=  92) return 22.5;
-  if (x<= 136) return 45;
+  if (x<=  65) return 180.0;
+  if (x<=  92) return  22.5;
+  if (x<= 136) return  45.0;
   if (x<= 184) return 247.5;
-  if (x<= 228) return 225;
+  if (x<= 228) return 225.0;
   if (x<= 320) return 337.5;
-  if (x<= 422) return 0;
+  if (x<= 422) return   0.0;
   if (x<= 570) return 292.5;
-  if (x<= 852) return 315;
-  if (x<=1023) return 270;
+  if (x<= 852) return 315.0;
+  if (x<=1023) return 270.0;
 }
+
 uint16_t pomiar_adc(int pin){
   uint32_t pomiar = 0;
   uint8_t ile = Ilosc_probek;
@@ -175,7 +179,7 @@ void pomiary_analogowe(){
   pomiary[15]=(float)pomiar_adc(PIN_solar_2)*Solar_2_korekta;
   pomiary[16]=(float)pomiar_adc(PIN_turbina)*Turbina_korekta;
   pomiary[17]=(float)pomiar_adc(PIN_akumulator)*Akumulator_korekta;
-  pomiary[18]=100*(pomiary[17]-Pusty_akumulator)/(Pelny_akumulator - Pusty_akumulator);
+  pomiary[18]=100*(pomiary[17]-Pusty_akumulator)/(Pelny_akumulator-Pusty_akumulator);
 }
 
 void przygotuj_pomiary(){
@@ -225,8 +229,12 @@ void setup() {
   czujnik_DS_4.setWaitForConversion(false);
   czujnik_DS_5.setWaitForConversion(false);
   czujnik_DS_6.setWaitForConversion(false);
-  
+
+#if defined __AVR_ATmega2560__
+  analogReference(INTERNAL1V1);
+#else
   analogReference(INTERNAL);
+#endif
 }
 
 void loop() {
